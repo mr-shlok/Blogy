@@ -4,13 +4,22 @@ import dotenv from 'dotenv';
 import { LingoDotDevEngine } from 'lingo.dev/sdk';
 import { ChatOpenAI } from '@langchain/openai';
 import { SystemMessage, HumanMessage, AIMessage } from '@langchain/core/messages';
-import { generateBlogContent, improveContent, summarizeComments, summarizeDocument, getSuggestions } from './services/aiWriter.js';
+import {
+    generateBlogContent, improveContent, summarizeComments, summarizeDocument, getSuggestions,
+    translateSelectedText, refineContent, explainText, getPhoneticIPA
+} from './services/aiWriter.js';
 import { extractContent } from './services/contentExtractor.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+const GRAMMY_LANG_MAP = {
+    en: 'English', hi: 'Hindi', ar: 'Arabic', fr: 'French', de: 'German',
+    zh: 'Chinese', ja: 'Japanese', es: 'Spanish', it: 'Italian',
+    pt: 'Portuguese', ru: 'Russian', ko: 'Korean'
+};
 
 // Middleware
 app.use(cors());
@@ -270,6 +279,53 @@ app.post('/api/get-suggestions', async (req, res) => {
             error: 'AI Suggestions failed',
             message: error.message
         });
+    }
+});
+
+app.post('/api/grammy/translate', async (req, res) => {
+    try {
+        const { content, targetLang } = req.body;
+        const targetLangName = GRAMMY_LANG_MAP[targetLang] || targetLang;
+        const result = await translateSelectedText(content, targetLangName);
+        res.json({ translatedText: result });
+    } catch (error) {
+        console.error('Grammy Translate error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/grammy/refine', async (req, res) => {
+    try {
+        const { content, tone, locale } = req.body;
+        const langName = GRAMMY_LANG_MAP[locale] || 'English';
+        const result = await refineContent(content, tone, langName);
+        res.json({ refinedText: result });
+    } catch (error) {
+        console.error('Grammy Refine error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/grammy/explain', async (req, res) => {
+    try {
+        const { content, locale } = req.body;
+        const langName = GRAMMY_LANG_MAP[locale] || 'English';
+        const result = await explainText(content, langName);
+        res.json({ explanation: result });
+    } catch (error) {
+        console.error('Grammy Explain error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/grammy/phonetic', async (req, res) => {
+    try {
+        const { content } = req.body;
+        const result = await getPhoneticIPA(content);
+        res.json({ ipa: result });
+    } catch (error) {
+        console.error('Grammy Phonetic error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 

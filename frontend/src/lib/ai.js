@@ -1,4 +1,4 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const callTranslateAPI = async (content, sourceLang, targetLang) => {
     const response = await fetch(`${BACKEND_URL}/api/translate`, {

@@ -1,4 +1,4 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 export const translateContent = async (content, sourceLang, targetLang) => {
     if (!sourceLang || !targetLang || sourceLang === targetLang) return content;

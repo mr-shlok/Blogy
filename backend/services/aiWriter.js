@@ -48,6 +48,63 @@ export async function generateBlogContent(topic, language = "English") {
   }
 }
 
+export async function translateSelectedText(content, targetLanguage = "English") {
+  const prompt = `
+  Translate the following text to ${targetLanguage}. 
+  Maintain the original tone and formatting. 
+  If the text is a single word, provide the direct translation.
+  If the text is a sentence, ensure natural flow.
+  
+  Return ONLY the translated text.
+  
+  Text: "${content}"
+  `;
+  const response = await model.invoke(prompt);
+  return response.content.trim();
+}
+
+export async function refineContent(content, tone = "Professional", language = "English") {
+  const prompt = `
+  You are an elite editor. Rewrite the following text to be more ${tone}.
+  Language: ${language}.
+  Ensure the result is polished, impactful, and clear.
+  
+  Return ONLY the rewritten text, no preamble.
+  
+  Text: "${content}"
+  `;
+  const response = await model.invoke(prompt);
+  return response.content.trim();
+}
+
+export async function explainText(content, language = "English") {
+  const prompt = `
+  Explain the following word, phrase, or sentence in simple terms.
+  Respond in ${language}.
+  Provide context, meaning, and a brief example if helpful.
+  Keep it concise (max 80 words).
+  
+  Return ONLY the explanation text.
+  
+  Text: "${content}"
+  `;
+  const response = await model.invoke(prompt);
+  return response.content.trim();
+}
+
+export async function getPhoneticIPA(content) {
+  const prompt = `
+  Provide the IPA (International Phonetic Alphabet) transcription for the following text.
+  If it's multiple words, provide IPA for each or the whole phrase.
+  
+  Return ONLY the IPA characters inside standard brackets []. No other text.
+  
+  Text: "${content}"
+  `;
+  const response = await model.invoke(prompt);
+  return response.content.trim();
+}
+
 export async function improveContent(content, language = "English") {
   const prompt = `
   You are an expert editor. Improve the following text for clarity, grammar, and engagement while maintaining its original meaning.

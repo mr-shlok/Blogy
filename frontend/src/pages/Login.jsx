@@ -4,7 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { useLingo, useLingoLocale, setLingoLocale } from "lingo.dev/react/client";
 import { LANGUAGES } from '../lingo/dictionary';
 import { Mail, Lock, Loader2, Github, BookOpen, ArrowLeft } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+
+import PremiumBackground from '../components/PremiumBackground';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -52,101 +54,118 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0f172a] text-[#f8fafc] font-sans flex flex-col">
-            <nav className="border-b border-[#1e293b] bg-[#0f172a]/80 backdrop-blur-xl">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <Link to="/" className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25">
+        <div className="min-h-screen bg-white text-slate-900 font-sans flex flex-col selection:bg-indigo-100 selection:text-indigo-700">
+            <nav className="border-b border-slate-100 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-8 py-5 flex justify-between items-center">
+                    <Link to="/" className="flex items-center gap-3 group">
+                        <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg transition-all duration-500 group-hover:bg-indigo-600">
                             <BookOpen className="text-white" size={22} />
                         </div>
-                        <h1 className="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Blogy</h1>
+                        <h1 className="text-2xl font-black tracking-tight text-slate-900 transition-all duration-500 uppercase">{t("app.name")}</h1>
                     </Link>
-                    <select
-                        value={locale || 'en'}
-                        onChange={(e) => setLingoLocale(e.target.value)}
-                        className="bg-[#1e293b] border border-[#334155] rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                        {LANGUAGES.map(l => (
-                            <option key={l.code} value={l.code}>{l.nativeName}</option>
-                        ))}
-                    </select>
+                    <div className="flex items-center gap-4">
+                        <select
+                            value={locale || 'en'}
+                            onChange={(e) => setLingoLocale(e.target.value)}
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer hover:bg-slate-100"
+                        >
+                            {LANGUAGES.map(l => (
+                                <option key={l.code} value={l.code}>{l.nativeName}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </nav>
 
-            <div className="flex-1 flex items-center justify-center p-6">
+            <div className="flex-1 flex items-center justify-center p-8 relative z-10">
+                <PremiumBackground />
+
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="w-full max-w-md"
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="w-full max-w-md relative"
                 >
-                    <Link to="/" className="inline-flex items-center gap-2 text-[#94a3b8] hover:text-white mb-8 transition-colors">
-                        <ArrowLeft size={18} />
-                        <span className="text-sm font-medium">{t("editor.back")}</span>
+                    <Link to="/" className="inline-flex items-center gap-3 text-slate-500 hover:text-indigo-600 mb-10 transition-all group font-black uppercase tracking-widest text-[10px]">
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        <span>{t("editor.back")}</span>
                     </Link>
 
-                    <div className="bg-[#1e293b] border border-[#334155] rounded-3xl p-8 shadow-2xl">
-                        <h2 className="text-3xl font-black mb-2">{t("nav.login")}</h2>
-                        <p className="text-[#94a3b8] mb-8">Sign in to access your dashboard.</p>
+                    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-10 md:p-12 shadow-2xl shadow-slate-200/50 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-900"></div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-[#94a3b8] ml-1">Email</label>
-                                <div className="relative">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#475569]" size={20} />
+                        <h2 className="text-4xl font-black mb-3 text-slate-900 tracking-tight">{t("nav.login")}</h2>
+                        <p className="text-slate-600 font-black mb-10 text-sm">{t("auth.welcomeBack")}</p>
+
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="space-y-2.5">
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">{t("auth.emailLabel")}</label>
+                                <div className="relative group">
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={20} />
                                     <input
                                         type="email"
                                         required
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-[#0f172a] border border-[#334155] rounded-2xl py-3 pl-12 pr-4 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 bg-white transition-all font-bold text-slate-900 placeholder:text-slate-300"
                                         placeholder="name@example.com"
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-[#94a3b8] ml-1">Password</label>
-                                <div className="relative">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#475569]" size={20} />
+                            <div className="space-y-2.5">
+                                <div className="flex justify-between items-center ml-1">
+                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{t("auth.passwordLabel")}</label>
+                                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest cursor-pointer hover:underline transition-all">{t("auth.forgotPassword")}</span>
+                                </div>
+                                <div className="relative group">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={20} />
                                     <input
                                         type="password"
                                         required
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-[#0f172a] border border-[#334155] rounded-2xl py-3 pl-12 pr-4 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 bg-white transition-all font-bold text-slate-900 placeholder:text-slate-400"
                                         placeholder="••••••••"
                                     />
                                 </div>
                             </div>
 
                             {error && (
-                                <p className="text-red-400 text-sm font-medium bg-red-400/10 p-3 rounded-xl border border-red-400/20">{error}</p>
+                                <motion.p
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="text-red-500 text-xs font-black bg-red-50 p-4 rounded-xl border border-red-100 uppercase tracking-wider text-center"
+                                >
+                                    {error}
+                                </motion.p>
                             )}
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2"
+                                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-4.5 rounded-[1.25rem] transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-200 hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:translate-y-0"
                             >
-                                {loading ? <Loader2 className="animate-spin" size={20} /> : t("nav.login")}
+                                {loading ? <Loader2 className="animate-spin" size={20} /> : <span className="uppercase tracking-widest text-sm">{t("nav.login")}</span>}
                             </button>
                         </form>
 
-                        <div className="relative my-8">
+                        <div className="relative my-10">
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-[#334155]"></div>
+                                <div className="w-full border-t border-slate-100"></div>
                             </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-4 bg-[#1e293b] text-[#64748b] font-bold">OR</span>
+                            <div className="relative flex justify-center text-[10px]">
+                                <span className="px-5 bg-white text-slate-400 font-black uppercase tracking-[0.3em]">{t("auth.secureAccess")}</span>
                             </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <button
+                        <div className="grid grid-cols-2 gap-4">
+                            <motion.button
+                                whileHover={{ scale: 1.05, y: -2 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => handleOAuth('google')}
                                 disabled={loading}
-                                className="w-full bg-white hover:bg-gray-50 text-gray-900 font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 border border-[#334155] disabled:opacity-50"
+                                className="flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-900 font-black py-4 rounded-2xl transition-all border border-slate-100 hover:border-slate-200 shadow-sm disabled:opacity-50 text-[10px] uppercase tracking-widest"
                             >
                                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -154,22 +173,24 @@ export default function Login() {
                                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                                 </svg>
-                                Continue with Google
-                            </button>
-                            <button
+                                {t("auth.googleLogin")}
+                            </motion.button>
+                            <motion.button
+                                whileHover={{ scale: 1.05, y: -2 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => handleOAuth('github')}
                                 disabled={loading}
-                                className="w-full bg-[#0f172a] hover:bg-[#1e293b] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 border border-[#334155] disabled:opacity-50"
+                                className="flex items-center justify-center gap-3 bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-2xl transition-all border border-slate-900 shadow-xl shadow-indigo-100/20 disabled:opacity-50 text-[10px] uppercase tracking-widest"
                             >
                                 <Github size={20} />
-                                Continue with GitHub
-                            </button>
+                                {t("auth.githubLogin")}
+                            </motion.button>
                         </div>
 
-                        <div className="mt-8 text-center text-[#94a3b8]">
-                            <p>
-                                Don't have an account?{' '}
-                                <Link to="/signup" className="text-indigo-400 font-bold hover:underline">
+                        <div className="mt-12 text-center">
+                            <p className="text-slate-500 font-bold text-sm">
+                                {t("auth.newToApp")}{' '}
+                                <Link to="/signup" className="text-indigo-600 font-black hover:text-indigo-700 transition-colors ml-1">
                                     {t("nav.signup")}
                                 </Link>
                             </p>
@@ -177,6 +198,10 @@ export default function Login() {
                     </div>
                 </motion.div>
             </div>
+
+            <footer className="py-10 text-center relative z-10">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">{t("footer.rights").replace('{{year}}', new Date().getFullYear())}</p>
+            </footer>
         </div>
     );
 }
