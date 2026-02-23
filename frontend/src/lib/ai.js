@@ -1,24 +1,30 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+import axiosInstance from './axios';
 
 const callTranslateAPI = async (content, sourceLang, targetLang) => {
-    const response = await fetch(`${BACKEND_URL}/api/translate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, sourceLang, targetLang })
-    });
-    if (!response.ok) throw new Error('API call failed');
-    const { translatedContent } = await response.json();
-    return translatedContent;
+    try {
+        const { data } = await axiosInstance.post('/api/translate', {
+            content,
+            sourceLang,
+            targetLang
+        });
+        return data.translatedContent;
+    } catch (error) {
+        console.error('Translation API error:', error);
+        throw new Error(error.response?.data?.message || `Translation failed: ${error.message}`);
+    }
 };
 
 const callGenerateAPI = async (topic, locale) => {
-    const response = await fetch(`${BACKEND_URL}/api/generate-blog`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, locale })
-    });
-    if (!response.ok) throw new Error('AI Generation failed');
-    return await response.json();
+    try {
+        const { data } = await axiosInstance.post('/api/generate-blog', {
+            topic,
+            locale
+        });
+        return data;
+    } catch (error) {
+        console.error('Generation API error:', error);
+        throw new Error(error.response?.data?.message || error.response?.data?.error || `Generation failed: ${error.message}`);
+    }
 };
 
 export const generateAllBlogContent = async (topic, lang = 'en') => {
@@ -32,63 +38,68 @@ export const generateAllBlogContent = async (topic, lang = 'en') => {
 };
 
 export const generateTitle = async (content, lang = 'en') => {
-    if (!content || content.trim().length < 10) return '';
+    if (!content || content.trim().length < 10) {
+        throw new Error('Content too short. Please write at least 10 characters.');
+    }
     try {
         const result = await callGenerateAPI(content, lang);
         return result.title || '';
     } catch (error) {
         console.error('Title generation failed:', error);
-        return '';
+        throw new Error(`Title generation failed: ${error.message}`);
     }
 };
 
 export const generateSEODescription = async (content, lang = 'en') => {
-    if (!content || content.trim().length < 10) return '';
+    if (!content || content.trim().length < 10) {
+        throw new Error('Content too short. Please write at least 10 characters.');
+    }
     try {
         const result = await callGenerateAPI(content, lang);
         return result.description || '';
     } catch (error) {
         console.error('SEO generation failed:', error);
-        return '';
+        throw new Error(`SEO description generation failed: ${error.message}`);
     }
 };
 
 export const generateHashtags = async (content, lang = 'en') => {
-    if (!content || content.trim().length < 10) return '';
+    if (!content || content.trim().length < 10) {
+        throw new Error('Content too short. Please write at least 10 characters.');
+    }
     try {
         const result = await callGenerateAPI(content, lang);
         return (result.hashtags || []).join(' ') || '';
     } catch (error) {
         console.error('Hashtag generation failed:', error);
-        return '';
+        throw new Error(`Hashtag generation failed: ${error.message}`);
     }
 };
 
 export const generateSummary = async (content, lang = 'en') => {
-    if (!content || content.trim().length < 10) return '';
+    if (!content || content.trim().length < 10) {
+        throw new Error('Content too short. Please write at least 10 characters.');
+    }
     try {
         const result = await callGenerateAPI(content, lang);
         return result.summary || '';
     } catch (error) {
         console.error('Summary generation failed:', error);
-        return '';
+        throw new Error(`Summary generation failed: ${error.message}`);
     }
 };
 
 export const improveWriting = async (content, lang = 'en') => {
     if (!content || content.trim().length < 10) return content;
     try {
-        const response = await fetch(`${BACKEND_URL}/api/improve-writing`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content, locale: lang })
+        const { data } = await axiosInstance.post('/api/improve-writing', {
+            content,
+            locale: lang
         });
-        if (!response.ok) throw new Error('AI Improvement failed');
-        const { improvedContent } = await response.json();
-        return improvedContent;
+        return data.improvedContent;
     } catch (error) {
         console.error('Writing improvement failed:', error);
-        return content;
+        throw new Error(`Writing improvement failed: ${error.response?.data?.message || error.message}`);
     }
 };
 
@@ -96,33 +107,29 @@ export const switchTone = async (content, tone, lang = 'en') => {
     if (!content || content.trim().length < 10) return content;
     try {
         const prompt = `Rewrite the following text in a ${tone} tone. Keep it in ${lang}.:\n\n${content}`;
-        const response = await fetch(`${BACKEND_URL}/api/improve-writing`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: prompt, locale: lang })
+        const { data } = await axiosInstance.post('/api/improve-writing', {
+            content: prompt,
+            locale: lang
         });
-        if (!response.ok) throw new Error('Tone switch failed');
-        const { improvedContent } = await response.json();
-        return improvedContent;
+        return data.improvedContent;
     } catch (error) {
         console.error('Tone switch failed:', error);
-        return content;
+        throw new Error(`Tone switch failed: ${error.response?.data?.message || error.message}`);
     }
 };
 
 export const summarizeComments = async (comments, lang = 'en') => {
-    if (!comments || comments.length === 0) return '';
+    if (!comments || comments.length === 0) {
+        throw new Error('No comments to summarize.');
+    }
     try {
-        const response = await fetch(`${BACKEND_URL}/api/summarize-comments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ comments, locale: lang })
+        const { data } = await axiosInstance.post('/api/summarize-comments', {
+            comments,
+            locale: lang
         });
-        if (!response.ok) throw new Error('Comment summarization failed');
-        const { summary } = await response.json();
-        return summary;
+        return data.summary;
     } catch (error) {
         console.error('Comment summarization failed:', error);
-        return '';
+        throw new Error(`Comment summarization failed: ${error.response?.data?.message || error.message}`);
     }
 };

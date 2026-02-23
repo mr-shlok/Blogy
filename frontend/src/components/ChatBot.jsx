@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useLingoLocale } from 'lingo.dev/react/client';
 import { MessageSquare, X, Send, Loader2, Bot, User, Paperclip, FileText, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+import axiosInstance from '../lib/axios';
 
 export default function ChatBot() {
     const locale = useLingoLocale();
@@ -40,36 +39,21 @@ export default function ChatBot() {
         setLoading(true);
 
         try {
-            let response;
+            let data;
             if (attachment) {
-                // Handle file/document summarization
-                response = await fetch(`${BACKEND_URL}/api/summarize-document`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fileUrl: attachment.url,
-                        fileName: attachment.name,
-                        locale: locale || 'en'
-                    })
-                });
+                ({ data } = await axiosInstance.post('/api/summarize-document', {
+                    fileUrl: attachment.url,
+                    fileName: attachment.name,
+                    locale: locale || 'en'
+                }));
             } else {
-                response = await fetch(`${BACKEND_URL}/api/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: userMessage.content,
-                        locale: locale || 'en',
-                        history: messages.slice(-10)
-                    })
-                });
+                ({ data } = await axiosInstance.post('/api/chat', {
+                    message: userMessage.content,
+                    locale: locale || 'en',
+                    history: messages.slice(-10)
+                }));
             }
 
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Request failed');
-            }
-
-            const data = await response.json();
             setMessages(prev => [...prev, {
                 role: 'assistant',
                 content: data.response || data.summary || 'Summary generated.'
@@ -78,7 +62,7 @@ export default function ChatBot() {
         } catch (error) {
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: `⚠️ ${error.message || 'Something went wrong. Please try again.'}`
+                content: `⚠️ ${error.response?.data?.error || error.message || 'Something went wrong. Please try again.'}`
             }]);
         } finally {
             setLoading(false);

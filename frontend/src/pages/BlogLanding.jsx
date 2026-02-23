@@ -9,6 +9,7 @@ import { translateContent } from '../lib/lingo';
 import AuthModal from '../components/AuthModal';
 import LanguageSelector from '../components/LanguageSelector';
 import PremiumBackground from '../components/PremiumBackground';
+import CustomCursor from '../components/CustomCursor';
 
 const stripHtmlTags = (html) => {
     if (!html) return '';
@@ -27,6 +28,10 @@ export default function BlogLanding() {
     const [translatedPosts, setTranslatedPosts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    
+    const [cursorX, setCursorX] = useState(0);
+    const [cursorY, setCursorY] = useState(0);
+    const [cursorVisible, setCursorVisible] = useState(false);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -34,54 +39,37 @@ export default function BlogLanding() {
 
     useEffect(() => {
         const fetchPosts = async () => {
-            const { data, error } = await supabase
-                .from('posts')
-                .select('*')
-                .order('created_at', { ascending: false });
+            try {
+                const { data, error } = await supabase
+                    .from('posts')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error('Error fetching posts:', error);
-            } else {
-                console.log("Fetched posts:", data);
-                setPosts(data);
-                setTranslatedPosts(data); // Initialize with original data
+                if (error) {
+                    console.error('Error fetching posts:', error);
+                } else {
+                    setPosts(data || []);
+                    setTranslatedPosts(data || []);
+                }
+            } catch (err) {
+                console.error('Failed to fetch posts:', err);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchPosts();
     }, []);
 
-    const handleWriteClick = () => {
-        if (!user) {
-            setIsAuthModalOpen(true);
-        } else {
-            navigate('/editor');
-        }
-    };
-
-    // Translation Logic
     useEffect(() => {
         const translateAllPosts = async () => {
             if (posts.length === 0) return;
 
-            // If target matches source or default, arguably we could skip, 
-            // but we need to check per post because each post might have a different base_lang.
-            // Actually, we can just map through everything.
-
             const newTranslatedPosts = await Promise.all(
                 posts.map(async (post) => {
-                    // Optimization: if lang matches, return original
                     if (post.base_lang === locale) return post;
 
-                    // Otherwise translate title and content
-                    // We can batch this if the SDK supports it, but for now we do individual
-                    // or we reuse the `translateContent` helper which takes an object.
-
                     try {
-                        // Translate title
                         const translatedTitle = await translateContent(post.title, post.base_lang, locale);
-                        // Translate content (preview) - maybe only translate first X characters for performance?
-                        // For now, translate whole content to be safe and accurate.
                         const translatedContent = await translateContent(post.content, post.base_lang, locale);
 
                         return {
@@ -91,7 +79,7 @@ export default function BlogLanding() {
                         };
                     } catch (err) {
                         console.error("Translation failed for post", post.id, err);
-                        return post; // Fallback to original
+                        return post;
                     }
                 })
             );
@@ -101,8 +89,45 @@ export default function BlogLanding() {
         translateAllPosts();
     }, [posts, locale]);
 
+    const handleWriteClick = () => {
+        if (!user) {
+            setIsAuthModalOpen(true);
+        } else {
+            navigate('/editor');
+        }
+    };
+
+    useEffect(() => {
+        let lastUpdateTime = 0;
+        const throttleDelay = 50;
+
+        const handleMouseMove = (e) => {
+            const now = Date.now();
+            if (now - lastUpdateTime > throttleDelay) {
+                setCursorX(e.clientX);
+                setCursorY(e.clientY);
+                setCursorVisible(true);
+                lastUpdateTime = now;
+            }
+        };
+
+        const handleMouseLeave = () => {
+            setCursorVisible(false);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove, { passive: true });
+        document.addEventListener('mouseleave', handleMouseLeave);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseleave', handleMouseLeave);
+        };
+    }, []);
+
     return (
-        <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
+        <>
+            <CustomCursor x={cursorX} y={cursorY} isVisible={cursorVisible} />
+            <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
             <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-8 py-5 flex justify-between items-center">
                     <motion.div
@@ -342,6 +367,7 @@ export default function BlogLanding() {
                     </div>
                 </div>
             </footer>
-        </div>
+            </div>
+        </>
     );
 }

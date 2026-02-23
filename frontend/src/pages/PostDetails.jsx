@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import LanguageSelector from '../components/LanguageSelector';
 import AuthModal from '../components/AuthModal';
 import Grammy from '../components/Grammy';
+import CustomCursor from '../components/CustomCursor';
 import { translateContent } from '../lib/lingo';
 import { generateSummary, summarizeComments } from '../lib/ai';
 import PremiumBackground from '../components/PremiumBackground';
@@ -44,7 +45,12 @@ export default function PostDetails() {
     const [readingContent, setReadingContent] = useState('');
     const [readingTitle, setReadingTitle] = useState('');
     const [loadingReader, setLoadingReader] = useState(false);
-
+    
+    const [cursorX, setCursorX] = useState(0);
+    const [cursorY, setCursorY] = useState(0);
+    const [cursorVisible, setCursorVisible] = useState(false);
+    const [summaryError, setSummaryError] = useState('');
+    const [feedbackError, setFeedbackError] = useState('');
 
     const t = (key) => {
         return dictionary && dictionary[key] ? dictionary[key] : key;
@@ -60,6 +66,50 @@ export default function PostDetails() {
             handleTranslation();
         }
     }, [currentLocale, post]);
+
+    const handleTranslation = async () => {
+        if (!post) return;
+        if (post.base_lang === currentLocale) {
+            setTranslatedPost(post);
+            return;
+        }
+
+        setTranslating(true);
+        const translated = await translateContent(
+            { title: post.title, content: post.content },
+            post.base_lang,
+            currentLocale
+        );
+        setTranslatedPost({ ...post, ...translated });
+        setTranslating(false);
+    };
+
+    useEffect(() => {
+        let lastUpdateTime = 0;
+        const throttleDelay = 50;
+
+        const handleMouseMove = (e) => {
+            const now = Date.now();
+            if (now - lastUpdateTime > throttleDelay) {
+                setCursorX(e.clientX);
+                setCursorY(e.clientY);
+                setCursorVisible(true);
+                lastUpdateTime = now;
+            }
+        };
+
+        const handleMouseLeave = () => {
+            setCursorVisible(false);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove, { passive: true });
+        document.addEventListener('mouseleave', handleMouseLeave);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseleave', handleMouseLeave);
+        };
+    }, []);
 
     const fetchPost = async () => {
         const { data, error } = await supabase
@@ -110,23 +160,6 @@ export default function PostDetails() {
         setLoading(false);
     };
 
-    const handleTranslation = async () => {
-        if (!post) return;
-        if (post.base_lang === currentLocale) {
-            setTranslatedPost(post);
-            return;
-        }
-
-        setTranslating(true);
-        const translated = await translateContent(
-            { title: post.title, content: post.content },
-            post.base_lang,
-            currentLocale
-        );
-        setTranslatedPost({ ...post, ...translated });
-        setTranslating(false);
-    };
-
     const handlePostComment = async (e) => {
         e.preventDefault();
         if (!newComment || !user) {
@@ -153,16 +186,30 @@ export default function PostDetails() {
 
     const handleSummarizeFeedback = async () => {
         setSummarizing(true);
-        const summary = await summarizeComments(comments, currentLocale);
-        setFeedbackSummary(summary);
+        setFeedbackError('');
+        try {
+            const summary = await summarizeComments(comments, currentLocale);
+            setFeedbackSummary(summary);
+        } catch (error) {
+            const errorMsg = error.message || 'Failed to summarize feedback. Please try again.';
+            setFeedbackError(errorMsg);
+            console.error('Feedback summarization error:', error);
+        }
         setSummarizing(false);
     };
 
     const handleSummarizePost = async () => {
         if (!post) return;
         setSummarizingPost(true);
-        const summary = await generateSummary(post.content, currentLocale);
-        setPostSummary(summary);
+        setSummaryError('');
+        try {
+            const summary = await generateSummary(post.content, currentLocale);
+            setPostSummary(summary);
+        } catch (error) {
+            const errorMsg = error.message || 'Failed to generate summary. Please try again.';
+            setSummaryError(errorMsg);
+            console.error('Post summarization error:', error);
+        }
         setSummarizingPost(false);
     };
 
@@ -173,7 +220,7 @@ export default function PostDetails() {
         setReadingContent('');
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/extract-text`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/extract-text`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -206,7 +253,7 @@ export default function PostDetails() {
 
         setSummarizingAttachment(prev => ({ ...prev, [attach.url]: true }));
         try {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/summarize-document`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/summarize-document`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -237,6 +284,7 @@ export default function PostDetails() {
 
     return (
         <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-700 pb-20 relative">
+            <CustomCursor x={cursorX} y={cursorY} isVisible={cursorVisible} />
             <PremiumBackground />
             {/* Nav */}
             <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100">
@@ -325,7 +373,7 @@ export default function PostDetails() {
                     </div>
 
                     <div className="text-xl md:text-2xl leading-[1.6] text-slate-700 whitespace-pre-wrap mb-16 font-black selection:bg-indigo-100 selection:text-indigo-700">
-                        {translatedPost.content}
+                        {translatedPost.content.replace(/<[^>]*>/g, '').trim()}
                     </div>
 
                     {/* Attachments Section */}

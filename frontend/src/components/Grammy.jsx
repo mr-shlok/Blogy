@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useLingo } from 'lingo.dev/react/client';
 import { LANGUAGES } from '../lingo/dictionary';
+import axiosInstance from '../lib/axios';
 
 export default function Grammy({ mode = 'viewer', onReplace, baseLang = 'en' }) {
     const { dictionary } = useLingo();
@@ -23,8 +24,6 @@ export default function Grammy({ mode = 'viewer', onReplace, baseLang = 'en' }) 
 
 
     const widgetRef = useRef(null);
-
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
     useEffect(() => {
         const handleSelection = (e) => {
@@ -94,12 +93,9 @@ export default function Grammy({ mode = 'viewer', onReplace, baseLang = 'en' }) 
     const fetchIPA = async () => {
         if (ipaText) return;
         try {
-            const res = await fetch(`${BACKEND_URL}/api/grammy/phonetic`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: selectedText })
+            const { data } = await axiosInstance.post('/api/grammy/phonetic', {
+                content: selectedText
             });
-            const data = await res.json();
             setIpaText(data.ipa);
         } catch (e) { console.error('IPA failed', e); }
     };
@@ -109,12 +105,10 @@ export default function Grammy({ mode = 'viewer', onReplace, baseLang = 'en' }) 
         setActiveTab('result');
         setTargetLang(code);
         try {
-            const response = await fetch(`${BACKEND_URL}/api/grammy/translate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: selectedText, targetLang: code })
+            const { data } = await axiosInstance.post('/api/grammy/translate', {
+                content: selectedText,
+                targetLang: code
             });
-            const data = await response.json();
             setAiResult({ type: 'translated', text: data.translatedText, lang: code });
         } catch (error) {
             console.error('Translation failed:', error);
@@ -127,12 +121,11 @@ export default function Grammy({ mode = 'viewer', onReplace, baseLang = 'en' }) 
         setLoading(true);
         setActiveTab('result');
         try {
-            const response = await fetch(`${BACKEND_URL}/api/grammy/refine`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: selectedText, tone, locale: targetLang })
+            const { data } = await axiosInstance.post('/api/grammy/refine', {
+                content: selectedText,
+                tone,
+                locale: targetLang
             });
-            const data = await response.json();
             setAiResult({ type: 'refined', text: data.refinedText, tone });
         } catch (error) {
             console.error('Refinement failed:', error);
@@ -145,12 +138,10 @@ export default function Grammy({ mode = 'viewer', onReplace, baseLang = 'en' }) 
         setLoading(true);
         setActiveTab('explanation');
         try {
-            const response = await fetch(`${BACKEND_URL}/api/grammy/explain`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: selectedText, locale: targetLang })
+            const { data } = await axiosInstance.post('/api/grammy/explain', {
+                content: selectedText,
+                locale: targetLang
             });
-            const data = await response.json();
             setAiResult({ type: 'explanation', text: data.explanation });
         } catch (error) {
             console.error('Explain failed:', error);

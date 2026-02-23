@@ -1,30 +1,16 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+import axiosInstance from './axios';
 
 export const translateContent = async (content, sourceLang, targetLang) => {
     if (!sourceLang || !targetLang || sourceLang === targetLang) return content;
 
     try {
-        // Call local backend server
-        const response = await fetch(`${BACKEND_URL}/api/translate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                content,
-                sourceLang,
-                targetLang
-            })
+        const { data } = await axiosInstance.post('/api/translate', {
+            content,
+            sourceLang,
+            targetLang
         });
 
-        if (!response.ok) {
-            const error = await response.json();
-            console.error('Translation API error:', error);
-            return content; // Fallback to original
-        }
-
-        const { translatedContent } = await response.json();
-        return translatedContent;
+        return data.translatedContent;
     } catch (error) {
         console.error('Lingo translation failed:', error);
         return content;

@@ -6,6 +6,7 @@ import { Send, ArrowLeft, Type, AlignLeft, Languages, Image, Video, Link, FileTe
 import { useAuth } from '../context/AuthContext';
 import LanguageSelector from '../components/LanguageSelector';
 import Grammy from '../components/Grammy';
+import CustomCursor from '../components/CustomCursor';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -36,6 +37,10 @@ export default function BlogEditor() {
     const [attachments, setAttachments] = useState([]);
     const [showLinkInput, setShowLinkInput] = useState(false);
     const [linkUrl, setLinkUrl] = useState('');
+    
+    const [cursorX, setCursorX] = useState(0);
+    const [cursorY, setCursorY] = useState(0);
+    const [cursorVisible, setCursorVisible] = useState(false);
 
     // Redirect if not authenticated
     useEffect(() => {
@@ -43,6 +48,33 @@ export default function BlogEditor() {
             navigate('/');
         }
     }, [user, authLoading, navigate]);
+
+    useEffect(() => {
+        let lastUpdateTime = 0;
+        const throttleDelay = 50;
+
+        const handleMouseMove = (e) => {
+            const now = Date.now();
+            if (now - lastUpdateTime > throttleDelay) {
+                setCursorX(e.clientX);
+                setCursorY(e.clientY);
+                setCursorVisible(true);
+                lastUpdateTime = now;
+            }
+        };
+
+        const handleMouseLeave = () => {
+            setCursorVisible(false);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove, { passive: true });
+        document.addEventListener('mouseleave', handleMouseLeave);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseleave', handleMouseLeave);
+        };
+    }, []);
 
     const t = (key) => {
         return dictionary && dictionary[key] ? dictionary[key] : key;
@@ -126,7 +158,9 @@ export default function BlogEditor() {
     };
 
     return (
-        <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-700">
+        <>
+            <CustomCursor x={cursorX} y={cursorY} isVisible={cursorVisible} />
+            <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-700">
             <nav className="border-b border-slate-100 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
                 <div className="max-w-5xl mx-auto px-8 py-5 flex justify-between items-center">
                     <button
@@ -271,6 +305,7 @@ export default function BlogEditor() {
                 {t("editor.cloudSynced")} • {baseLang.toUpperCase()} {t("editor.translationReady")}
             </div>
             <Grammy mode="editor" baseLang={baseLang} />
-        </div>
+            </div>
+        </>
     );
 }

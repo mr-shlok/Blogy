@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLingo, useLingoLocale, setLingoLocale } from "lingo.dev/react/client";
 import { LANGUAGES } from '../lingo/dictionary';
 import { translateContent } from '../lib/lingo';
+import axiosInstance from '../lib/axios';
 import {
     generateTitle, generateSEODescription, generateHashtags,
     generateSummary, improveWriting
@@ -23,6 +24,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { motion, AnimatePresence } from 'framer-motion';
 import LanguageSelector from '../components/LanguageSelector';
 import PremiumBackground from '../components/PremiumBackground';
+import CustomCursor from '../components/CustomCursor';
 
 const stripHtmlTags = (html) => {
     if (!html) return '';
@@ -52,6 +54,7 @@ export default function Dashboard() {
 
     const [aiLoading, setAiLoading] = useState({});
     const [aiResults, setAiResults] = useState({});
+    const [aiErrors, setAiErrors] = useState({});
     const [attachments, setAttachments] = useState([]);
     const [showLinkInput, setShowLinkInput] = useState(false);
     const [linkUrl, setLinkUrl] = useState('');
@@ -66,6 +69,10 @@ export default function Dashboard() {
     const [loadingReader, setLoadingReader] = useState(false);
     const [readingTitle, setReadingTitle] = useState('');
     const [readingContent, setReadingContent] = useState('');
+    
+    const [cursorX, setCursorX] = useState(0);
+    const [cursorY, setCursorY] = useState(0);
+    const [cursorVisible, setCursorVisible] = useState(false);
 
     const editor = useEditor({
         extensions: [
@@ -100,6 +107,40 @@ export default function Dashboard() {
     useEffect(() => {
         if (user) fetchPosts();
     }, [user]);
+
+    useEffect(() => {
+        let lastX = 0;
+        let lastY = 0;
+        let rafId = null;
+
+        const handleMouseMove = (e) => {
+            if (!rafId) {
+                rafId = requestAnimationFrame(() => {
+                    setCursorX(e.clientX);
+                    setCursorY(e.clientY);
+                    setCursorVisible(true);
+                    rafId = null;
+                });
+            }
+        };
+
+        const handleMouseLeave = () => {
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+            setCursorVisible(false);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove, { passive: true });
+        document.addEventListener('mouseleave', handleMouseLeave);
+
+        return () => {
+            if (rafId) cancelAnimationFrame(rafId);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseleave', handleMouseLeave);
+        };
+    }, []);
 
     const fetchPosts = async () => {
         setLoadingPosts(true);
@@ -203,20 +244,12 @@ export default function Dashboard() {
 
         setSummarizingAttachment(prev => ({ ...prev, [attach.url]: true }));
         try {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/summarize-document`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fileUrl: attach.url,
-                    fileName: attach.name,
-                    locale: locale || 'en'
-                })
+            const { data } = await axiosInstance.post('/api/summarize-document', {
+                fileUrl: attach.url,
+                fileName: attach.name,
+                locale: locale || 'en'
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                setAttachmentSummaries(prev => ({ ...prev, [attach.url]: data.response }));
-            }
+            setAttachmentSummaries(prev => ({ ...prev, [attach.url]: data.response }));
         } catch (error) {
             console.error('Attachment summary failed:', error);
         } finally {
@@ -231,20 +264,10 @@ export default function Dashboard() {
         setReadingContent('');
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/extract-text`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fileUrl: attach.url,
-                    fileName: attach.name
-                })
+            const { data } = await axiosInstance.post('/api/extract-text', {
+                fileUrl: attach.url,
+                fileName: attach.name
             });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || data.error || 'Failed to extract content');
-            }
 
             if (data.content) {
                 setReadingContent(data.content);
@@ -253,7 +276,7 @@ export default function Dashboard() {
             }
         } catch (error) {
             console.error('Extraction failed:', error);
-            setReadingContent(`Failed to load document content: ${error.message}. Please ensure the document is public and try again.`);
+            setReadingContent(`Failed to load document content: ${error.response?.data?.message || error.message}. Please ensure the document is public and try again.`);
         } finally {
             setLoadingReader(false);
         }
@@ -299,16 +322,16 @@ export default function Dashboard() {
 
     const handleAI = async (type) => {
         setAiLoading(prev => ({ ...prev, [type]: true }));
+        setAiErrors(prev => ({ ...prev, [type]: null }));
         try {
-
-            // Use the topic (title) or first part of content as context
             const topic = title || content.slice(0, 200);
 
             if (type === 'improve') {
                 const improved = await improveWriting(content, baseLang);
-                if (improved) {
+                if (improved && improved !== content) {
                     setContent(improved);
                     if (editor) editor.commands.setContent(improved);
+                    setAiResults(prev => ({ ...prev, improve: improved }));
                 }
             } else {
                 let result;
@@ -328,7 +351,9 @@ export default function Dashboard() {
                 }
             }
         } catch (err) {
+            const errorMessage = err.message || 'An error occurred. Please try again.';
             console.error(`AI ${type} failed:`, err);
+            setAiErrors(prev => ({ ...prev, [type]: errorMessage }));
         }
         setAiLoading(prev => ({ ...prev, [type]: false }));
     };
@@ -378,7 +403,7 @@ export default function Dashboard() {
 
     return (
         <PremiumBackground contentClassName="flex">
-
+            <CustomCursor x={cursorX} y={cursorY} isVisible={cursorVisible} />
 
 
             <AnimatePresence>
@@ -504,6 +529,7 @@ export default function Dashboard() {
                             handlePublish={handlePublish}
                             aiLoading={aiLoading}
                             aiResults={aiResults}
+                            aiErrors={aiErrors}
                             handleAI={handleAI}
                             attachments={attachments}
                             setAttachments={setAttachments}
@@ -802,7 +828,7 @@ function ToolbarLabel({ label, icon, onChange, accept = "*", gradient = "from-in
 function CreatePostView({
     title, setTitle, content,
     baseLang, setBaseLang, publishing, handlePublish,
-    aiLoading, aiResults, handleAI,
+    aiLoading, aiResults, aiErrors, handleAI,
     attachments, setAttachments, handleFileUpload,
     showLinkInput, setShowLinkInput, linkUrl, setLinkUrl,
     isEditing, onCancel,
@@ -989,7 +1015,7 @@ function CreatePostView({
                         label={t("ai.generateTitle")}
                         loading={aiLoading.title}
                         onClick={() => handleAI('title')}
-                        disabled={!content}
+                        disabled={!title && !content}
                         gradient="from-indigo-400 via-blue-400 to-sky-300"
                         shadowColor="rgba(79,70,229,0.55)"
                     />
@@ -998,7 +1024,7 @@ function CreatePostView({
                         label={t("ai.generateSEO")}
                         loading={aiLoading.seo}
                         onClick={() => handleAI('seo')}
-                        disabled={!content}
+                        disabled={!title && !content}
                         gradient="from-violet-500 via-purple-400 to-fuchsia-400"
                         shadowColor="rgba(124,58,237,0.55)"
                     />
@@ -1007,7 +1033,7 @@ function CreatePostView({
                         label={t("ai.generateHashtags")}
                         loading={aiLoading.hashtags}
                         onClick={() => handleAI('hashtags')}
-                        disabled={!content}
+                        disabled={!title && !content}
                         gradient="from-pink-400 via-rose-400 to-orange-300"
                         shadowColor="rgba(219,39,119,0.55)"
                     />
@@ -1016,7 +1042,7 @@ function CreatePostView({
                         label={t("ai.generateSummary")}
                         loading={aiLoading.summary}
                         onClick={() => handleAI('summary')}
-                        disabled={!content}
+                        disabled={!title && !content}
                         gradient="from-emerald-400 via-teal-400 to-cyan-300"
                         shadowColor="rgba(5,150,105,0.55)"
                     />
@@ -1026,7 +1052,7 @@ function CreatePostView({
                     whileHover={{ scale: 1.02, y: -2, boxShadow: "0 20px 40px -8px rgba(99,102,241,0.4), 0 8px 16px -4px rgba(99,102,241,0.2)" }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleAI('improve')}
-                    disabled={aiLoading.improve || !content}
+                    disabled={aiLoading.improve || (!title && !content)}
                     className="relative overflow-hidden w-full flex items-center justify-center gap-2 bg-indigo-100/60 disabled:opacity-50 text-slate-900 px-4 py-3 rounded-xl font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-100/40 border border-indigo-200 hover:border-indigo-300 group"
                 >
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 opacity-0 group-hover:opacity-10 transition-all duration-300" />
@@ -1037,8 +1063,22 @@ function CreatePostView({
                     </span>
                 </motion.button>
 
-                {(aiResults.seo || aiResults.hashtags || aiResults.summary || aiResults.fileSummary) && (
+                {Object.values(aiErrors).some(e => e) && (
                     <div className="space-y-3">
+                        {Object.entries(aiErrors).map(([type, error]) => error && (
+                            <div key={type} className="bg-red-50/50 border border-red-100 rounded-2xl p-6 transition-all">
+                                <p className="text-[10px] font-black text-red-700 uppercase tracking-[0.2em] mb-3">Error - {type}</p>
+                                <p className="text-red-800 text-sm leading-relaxed font-black">{error}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {(aiResults.title || aiResults.seo || aiResults.hashtags || aiResults.summary || aiResults.fileSummary) && (
+                    <div className="space-y-3">
+                        {aiResults.title && (
+                            <ResultCard label="Generated Title" content={aiResults.title} />
+                        )}
                         {aiResults.seo && (
                             <ResultCard label="SEO Description" content={aiResults.seo} />
                         )}
@@ -1320,7 +1360,7 @@ function PostDetailView({ post, comments, newComment, setNewComment, handleComme
 
                 <div className="prose prose-indigo max-w-none">
                     <p className="text-xl text-slate-700 leading-[1.8] font-black whitespace-pre-wrap mb-12">
-                        {translatedPost.content}
+                        {stripHtmlTags(translatedPost.content)}
                     </p>
                 </div>
 

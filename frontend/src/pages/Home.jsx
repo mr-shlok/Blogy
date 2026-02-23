@@ -6,6 +6,7 @@ import { Globe, PenTool, MessageSquare, Languages, ArrowRight, BookOpen, Zap, Ch
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import PremiumBackground from '../components/PremiumBackground';
+import CustomCursor from '../components/CustomCursor';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
@@ -31,6 +32,9 @@ export default function Home() {
         const saved = localStorage.getItem('spotlightBookmarks');
         return saved ? JSON.parse(saved) : [];
     });
+    const [cursorX, setCursorX] = useState(0);
+    const [cursorY, setCursorY] = useState(0);
+    const [cursorVisible, setCursorVisible] = useState(false);
 
     const t = (key) => dictionary?.[key] || key;
 
@@ -352,24 +356,20 @@ export default function Home() {
     }, []);
 
     useEffect(() => {
-        const cursor = document.querySelector('.custom-cursor');
         const scrollytelling = document.getElementById('scrollytelling');
-        if (!cursor) return;
-
-
 
         let lastX = 0;
         let lastY = 0;
         let lastTime = Date.now();
+        let mouseX = 0;
+        let mouseY = 0;
 
         const createSparkle = (x, y, isTrail = false, isShake = false) => {
             const particle = document.createElement('div');
             particle.className = 'sparkle-particle';
 
-            // Larger stars for shake
             const size = isShake ? (Math.random() * 12 + 6) : (isTrail ? (Math.random() * 4 + 2) : (Math.random() * 6 + 4));
 
-            // Palette matches the wand's blue orb
             const blueColors = ['#00FFFF', '#87CEEB', '#00BFFF', '#E0FFFF', '#B0E0E6', '#FFFFFF'];
             const goldenColors = ['#FFD700', '#FFC107', '#FFB300', '#F9A825', '#FFF176', '#FFFFFF'];
             const colors = isShake || (!isTrail && !scrollytelling?.contains(document.elementFromPoint(x, y))) ? blueColors : goldenColors;
@@ -378,14 +378,12 @@ export default function Home() {
             particle.style.height = size + 'px';
             particle.style.background = colors[Math.floor(Math.random() * colors.length)];
 
-            // Pointer is at the orb (top-left) - adjust particle spawn a bit
             particle.style.left = (x - size / 2) + 'px';
             particle.style.top = (y - size / 2) + 'px';
 
             particle.style.zIndex = isTrail ? '9998' : '9997';
             particle.style.boxShadow = `0 0 ${size * 2}px ${colors[0]}, 0 0 ${size * 4}px rgba(255, 255, 255, 0.5)`;
 
-            // Enhanced 5-pointed star clip-path
             particle.style.clipPath = 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)';
             document.body.appendChild(particle);
 
@@ -410,75 +408,59 @@ export default function Home() {
             animate();
         };
 
-        const handleMouseMove = (e) => {
+        const updateCursor = () => {
             const now = Date.now();
             const dt = now - lastTime;
-            const dx = e.clientX - lastX;
-            const dy = e.clientY - lastY;
+            const dx = mouseX - lastX;
+            const dy = mouseY - lastY;
             const velocity = dt > 0 ? Math.sqrt(dx * dx + dy * dy) / dt : 0;
 
-            const isInScrolly = scrollytelling && scrollytelling.contains(e.target);
+            const isInScrolly = scrollytelling && scrollytelling.contains(document.elementFromPoint(mouseX, mouseY));
             const spotlightSection = document.getElementById('spotlight-cards-section');
             const spotlightRect = spotlightSection?.getBoundingClientRect();
             const isSpotlightOrBelow = spotlightRect && spotlightRect.top <= (window.innerHeight * 0.9);
 
             if (isInScrolly) {
-                cursor.style.opacity = '0';
+                setCursorVisible(false);
                 for (let i = 0; i < 2; i++) {
-                    createSparkle(e.clientX, e.clientY);
-                }
-            } else if (isSpotlightOrBelow) {
-                cursor.style.left = e.clientX + 'px';
-                cursor.style.top = e.clientY + 'px';
-                cursor.style.opacity = '1';
-                cursor.style.transform = 'translate(-10%, -10%)';
-
-                const parent = cursor.parentElement;
-                if (parent) parent.classList.add('has-custom-cursor');
-
-                // Shake detection (velocity threshold)
-                if (velocity > 1.5) {
-                    for (let i = 0; i < 3; i++) {
-                        createSparkle(e.clientX, e.clientY, false, true);
-                    }
-                } else if (Math.random() > 0.8) {
-                    createSparkle(e.clientX, e.clientY, true);
+                    createSparkle(mouseX, mouseY);
                 }
             } else {
-                cursor.style.opacity = '0';
-                const parent = cursor.parentElement;
-                if (parent) parent.classList.remove('has-custom-cursor');
+                setCursorX(mouseX);
+                setCursorY(mouseY);
+                setCursorVisible(true);
+
+                if (isSpotlightOrBelow && velocity > 1.5) {
+                    for (let i = 0; i < 3; i++) {
+                        createSparkle(mouseX, mouseY, false, true);
+                    }
+                } else if (isSpotlightOrBelow && Math.random() > 0.8) {
+                    createSparkle(mouseX, mouseY, true);
+                }
             }
 
-            lastX = e.clientX;
-            lastY = e.clientY;
+            lastX = mouseX;
+            lastY = mouseY;
             lastTime = now;
         };
 
-        const cards = document.querySelectorAll('.card, .card-read-more, .card-icon-share, .card-icon-bookmark, a');
+        let lastUpdateTime = 0;
+        const throttleDelay = 16;
 
-        const handleCardEnter = () => {
-            if (!scrollytelling || !scrollytelling.contains(document.activeElement)) {
-                cursor.classList.add('hovering');
+        const handleMouseMove = (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            const now = Date.now();
+            if (now - lastUpdateTime > throttleDelay) {
+                lastUpdateTime = now;
+                updateCursor();
             }
         };
 
-        const handleCardLeave = () => {
-            cursor.classList.remove('hovering');
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        cards.forEach(card => {
-            card.addEventListener('mouseenter', handleCardEnter);
-            card.addEventListener('mouseleave', handleCardLeave);
-        });
+        document.addEventListener('mousemove', handleMouseMove, { passive: true });
 
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
-            cards.forEach(card => {
-                card.removeEventListener('mouseenter', handleCardEnter);
-                card.removeEventListener('mouseleave', handleCardLeave);
-            });
         };
     }, []);
 
@@ -492,7 +474,7 @@ export default function Home() {
 
     return (
         <PremiumBackground showCursor={false}>
-            <div className="custom-cursor"></div>
+            <CustomCursor x={cursorX} y={cursorY} isVisible={cursorVisible} />
             <div className="min-h-screen text-slate-900 font-sans selection:bg-indigo-50 selection:text-indigo-900 overflow-x-hidden">
                 {/* Navigation */}
                 <motion.nav

@@ -1,20 +1,32 @@
 import "dotenv/config";
 import { ChatOpenAI } from "@langchain/openai";
 
-const model = new ChatOpenAI({
-  apiKey: process.env.OPENROUTE_API_KEY,
-  model: "google/gemini-2.0-flash-001",  // or any OpenRouter model
-  temperature: 0.7,
-  configuration: {
-    baseURL: "https://openrouter.ai/api/v1",
-    defaultHeaders: {
-      "HTTP-Referer": "http://localhost:5173",
-      "X-Title": "Multilingual AI Blog Platform"
+let model = null;
+
+const initializeModel = () => {
+  if (!model) {
+    const apiKey = process.env.OPENROUTE_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENROUTE_API_KEY is not configured. Please set it in your .env file.');
     }
+    model = new ChatOpenAI({
+      apiKey,
+      model: "google/gemini-2.0-flash-001",
+      temperature: 0.7,
+      configuration: {
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: {
+          "HTTP-Referer": "http://localhost:5173",
+          "X-Title": "Multilingual AI Blog Platform"
+        }
+      }
+    });
   }
-});
+  return model;
+};
 
 export async function generateBlogContent(topic, language = "English") {
+  const model = initializeModel();
   const prompt = `
   You are an expert SEO blog assistant.
 
@@ -42,13 +54,13 @@ export async function generateBlogContent(topic, language = "English") {
   try {
     return JSON.parse(response.content);
   } catch (e) {
-    // If it's wrapped in markdown, try to strip it
     const cleaned = response.content.replace(/```json|```/g, '').trim();
     return JSON.parse(cleaned);
   }
 }
 
 export async function translateSelectedText(content, targetLanguage = "English") {
+  const model = initializeModel();
   const prompt = `
   Translate the following text to ${targetLanguage}. 
   Maintain the original tone and formatting. 
@@ -64,6 +76,7 @@ export async function translateSelectedText(content, targetLanguage = "English")
 }
 
 export async function refineContent(content, tone = "Professional", language = "English") {
+  const model = initializeModel();
   const prompt = `
   You are an elite editor. Rewrite the following text to be more ${tone}.
   Language: ${language}.
@@ -78,6 +91,7 @@ export async function refineContent(content, tone = "Professional", language = "
 }
 
 export async function explainText(content, language = "English") {
+  const model = initializeModel();
   const prompt = `
   Explain the following word, phrase, or sentence in simple terms.
   Respond in ${language}.
@@ -93,6 +107,7 @@ export async function explainText(content, language = "English") {
 }
 
 export async function getPhoneticIPA(content) {
+  const model = initializeModel();
   const prompt = `
   Provide the IPA (International Phonetic Alphabet) transcription for the following text.
   If it's multiple words, provide IPA for each or the whole phrase.
@@ -106,6 +121,7 @@ export async function getPhoneticIPA(content) {
 }
 
 export async function improveContent(content, language = "English") {
+  const model = initializeModel();
   const prompt = `
   You are an expert editor. Improve the following text for clarity, grammar, and engagement while maintaining its original meaning.
   Respond in ${language}.
@@ -119,6 +135,7 @@ export async function improveContent(content, language = "English") {
 }
 
 export async function summarizeDocument(fileUrl, fileName, language = "English", extractedContent = null) {
+  const model = initializeModel();
   const prompt = `
   You are an expert content analyst for a multilingual blog platform. 
   Your task is to analyze and summarize the attached content in ${language}.
@@ -148,6 +165,7 @@ export async function summarizeDocument(fileUrl, fileName, language = "English",
 }
 
 export async function summarizeComments(comments, language = "English") {
+  const model = initializeModel();
   const commentTexts = comments.map(c => c.comment_text).join('\n');
   const prompt = `
   You are an expert community manager. Summarize the following reader feedback from a blog post in ${language}.
@@ -164,6 +182,7 @@ export async function summarizeComments(comments, language = "English") {
 }
 
 export async function getSuggestions(content, language = "English") {
+  const model = initializeModel();
   const prompt = `
   You are a helpful writing assistant. Analyze the following text and provide suggestions for improvement.
   Focus on:

@@ -5,7 +5,7 @@ import { useLingo, useLingoLocale, setLingoLocale } from "lingo.dev/react/client
 import { LANGUAGES } from '../lingo/dictionary';
 import { Mail, Lock, Loader2, Github, BookOpen, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
+import CustomCursor from '../components/CustomCursor';
 import PremiumBackground from '../components/PremiumBackground';
 
 export default function Login() {
@@ -17,12 +17,43 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    
+    const [cursorX, setCursorX] = useState(0);
+    const [cursorY, setCursorY] = useState(0);
+    const [cursorVisible, setCursorVisible] = useState(false);
 
     const t = (key) => dictionary?.[key] || key;
 
     useEffect(() => {
         if (user) navigate('/dashboard');
     }, [user, navigate]);
+
+    useEffect(() => {
+        let lastUpdateTime = 0;
+        const throttleDelay = 50;
+
+        const handleMouseMove = (e) => {
+            const now = Date.now();
+            if (now - lastUpdateTime > throttleDelay) {
+                setCursorX(e.clientX);
+                setCursorY(e.clientY);
+                setCursorVisible(true);
+                lastUpdateTime = now;
+            }
+        };
+
+        const handleMouseLeave = () => {
+            setCursorVisible(false);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove, { passive: true });
+        document.addEventListener('mouseleave', handleMouseLeave);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseleave', handleMouseLeave);
+        };
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -54,7 +85,9 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-white text-slate-900 font-sans flex flex-col selection:bg-indigo-100 selection:text-indigo-700">
+        <>
+            <CustomCursor x={cursorX} y={cursorY} isVisible={cursorVisible} />
+            <div className="min-h-screen bg-white text-slate-900 font-sans flex flex-col selection:bg-indigo-100 selection:text-indigo-700">
             <nav className="border-b border-slate-100 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-8 py-5 flex justify-between items-center">
                     <Link to="/" className="flex items-center gap-3 group">
@@ -202,6 +235,7 @@ export default function Login() {
             <footer className="py-10 text-center relative z-10">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">{t("footer.rights").replace('{{year}}', new Date().getFullYear())}</p>
             </footer>
-        </div>
+            </div>
+        </>
     );
 }
