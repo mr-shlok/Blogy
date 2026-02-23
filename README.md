@@ -1,3 +1,16 @@
+## 📹 Demo Video
+Uploaded on youtube as - https://www.youtube.com/watch?v=7uVqZBwM8co
+
+Screen shoot:
+<img width="1899" height="913" alt="Screenshot 2026-02-23 121553" src="https://github.com/user-attachments/assets/b654a647-fcd5-4bd2-ba08-7ac30979ec05" />
+<img width="1919" height="913" alt="Screenshot 2026-02-23 121630" src="https://github.com/user-attachments/assets/e66c3421-8356-4fb0-b21d-b2a2e8518091" />
+<img width="1916" height="913" alt="Screenshot 2026-02-23 121808" src="https://github.com/user-attachments/assets/f3a226a4-f379-4316-9c14-7b41a319ac63" />
+<img width="1915" height="917" alt="Screenshot 2026-02-23 121843" src="https://github.com/user-attachments/assets/a3dd8931-e5a4-4396-a885-d69b09cfdf83" />
+<img width="1916" height="919" alt="Screenshot 2026-02-23 121943" src="https://github.com/user-attachments/assets/20b610cf-8cec-4732-b2a5-5f044e73ffa1" />
+<img width="1914" height="914" alt="Screenshot 2026-02-23 122018" src="https://github.com/user-attachments/assets/00bdb468-3e76-4ad1-bd36-379179ea425c" />
+
+
+
 # Blogy - AI-Powered Multilingual Blog Platform
 
 A modern, full-stack blog platform that empowers creators to write once and reach readers across 100+ languages. Blogy combines real-time AI translation, interactive storytelling, and a seamless writing experience to break language barriers and build borderless communities.
