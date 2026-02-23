@@ -24,7 +24,6 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { motion, AnimatePresence } from 'framer-motion';
 import LanguageSelector from '../components/LanguageSelector';
 import PremiumBackground from '../components/PremiumBackground';
-import CustomCursor from '../components/CustomCursor';
 
 const stripHtmlTags = (html) => {
     if (!html) return '';

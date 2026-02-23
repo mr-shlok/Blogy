@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -11,6 +11,7 @@ import { LingoProviderWrapper } from "lingo.dev/react/client";
 import { loadDictionary } from "./lingo/dictionary";
 import { AuthProvider } from "./context/AuthContext";
 import ChatBot from "./components/ChatBot";
+import CustomCursor from "./components/CustomCursor";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -41,6 +42,46 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+function GlobalCursor() {
+  const [cursorX, setCursorX] = useState(0);
+  const [cursorY, setCursorY] = useState(0);
+  const [cursorVisible, setCursorVisible] = useState(false);
+
+  useEffect(() => {
+    let rafId = null;
+
+    const handleMouseMove = (e) => {
+      if (!rafId) {
+        rafId = requestAnimationFrame(() => {
+          setCursorX(e.clientX);
+          setCursorY(e.clientY);
+          setCursorVisible(true);
+          rafId = null;
+        });
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      setCursorVisible(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove, { passive: true });
+    document.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
+
+  return <CustomCursor x={cursorX} y={cursorY} isVisible={cursorVisible} />;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -51,6 +92,7 @@ function App() {
         >
           <AuthProvider>
             <BrowserRouter>
+              <GlobalCursor />
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
